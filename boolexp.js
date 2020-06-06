@@ -7,16 +7,19 @@ const OPERATOR = {
 	'*': {
         precedence: 2,
         binary: true,
+        unary: false,
 		fn: (a, b) => a && b
 	},
 	'+': {
         precedence: 1,
         binary: true,
+        unary: false,
 		fn: (a, b) => a || b
     },
     '~': {
         binary: false,
-        fn: a => !a
+        unary: true,
+        ufn: a => !a
     }
 };
 

@@ -1,15 +1,7 @@
 import ArithmeticExpression from './arithexp';
+import BooleanExpression from './boolexp';
+import util from 'util';
 
-const expression = "( 2 + 3 - 1 ) / ( 5 - 2 )";
-
-console.log("Expression to parse: " + expression);
-
-var exp = new ArithmeticExpression(expression);
-
-// TEMPORARY: Only until numbers are implemented in the parser directly.
-let numbers = {};
-for( let number of exp.getTokens() ) {
-    numbers[number] = parseInt(number);
-}
-
-console.log("Evaluated: " + exp.evaluate(numbers));
+const exp = new ArithmeticExpression('1 + --3');
+console.log(util.inspect(exp.tree, false, 8));
+console.log(exp.evaluate());

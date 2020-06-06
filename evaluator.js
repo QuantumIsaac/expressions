@@ -5,10 +5,12 @@ function evaluateTree(operators, treeHead, values) {
     let v = treeHead.value;
     if( isOperator(v) ) {
         let children = treeHead.children.map(t => evaluateTree(operators, t, values));
-        let opfn = operators[v].fn;
+        let opfn = children.length == 2 ? operators[v].fn : operators[v].ufn;
+
         return opfn(...children);
     } else {
-        return values[v];
+        if( typeof v === 'string' ) return values[v];
+        else return v;
     }
 };
 

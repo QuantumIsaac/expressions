@@ -3,7 +3,12 @@
 import Evaluator from './evaluator';
 
 const OPERATOR = {
-	// operator precedence
+    // operator precedence
+    '^': {
+        precedence: 3,
+        binary: true,
+        fn: (a, b) => Math.pow(a, b)
+    },
 	'*': {
         precedence: 2,
         binary: true,
@@ -22,7 +27,9 @@ const OPERATOR = {
     '-': {
         precedence: 1,
         binary: true,
-        fn: (a, b) => a - b
+        unary: true,
+        fn: (a, b) => a - b,
+        ufn: (a) => -a
     }
 };
 
@@ -34,11 +41,16 @@ class Expression {
             throw new Error("Expression constructor takes in an arithmetic expression.");
         }
         this.tree = ARITHMETIC_EVALUATOR.parser.parse(exp);
+        for( let token of this.tree.tokens ) {
+            if( token.length > 1 ) {
+                throw new Error("Variables may not be longer than one character long!");
+            }
+        }
     }
     getTokens() {
         return this.tree.tokens;
     }
-    evaluate(values) {
+    evaluate(values = {}) {
         for( let token of this.tree.tokens ) {
             if( !values.hasOwnProperty(token) ) throw new Error("values must define a numeric value for every variable.");
         }

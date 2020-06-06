@@ -4,6 +4,10 @@ const stackify = arr => {
 	return arr;
 };
 
+let assert = (bool, msg) => {
+	if( !bool ) throw new Error(msg);
+};
+
 const format = (tk) => typeof tk === 'string' ? { value: tk, children: [] } : tk;
 
 const makeTreeNode = (op, a, b) => {
@@ -23,16 +27,27 @@ const tokenize = (operators, exp) => {
 	let cur_token = '';
 	const push_token = () => {
 		if( cur_token !== '' ) {
-			tokens.push({
-				value: cur_token,
-				type: 'identifier'
-			});
+			if( /^[0-9]+(\.[0-9]+)?$/.test(cur_token) ) {
+				tokens.push({
+					value: cur_token,
+					type: 'number'
+				});
+			} else {
+				assert(!cur_token.includes('.'), "Identifiers may not contain periods!");
+				assert(!/[0-9]/.test(cur_token[0]), "Identifiers may not begin with digits!");
+				tokens.push({
+					value: cur_token,
+					type: 'identifier'
+				});
+			}
 			cur_token = '';
 		}
 	};
 
 	for( let char of exp ) {
 		if( /[a-zA-Z1-9_]/.test(char) ) {
+			cur_token += char;
+		} else if( char === '.' && /^[0-9]+$/.test(cur_token) ) {
 			cur_token += char;
 		} else if( /\s/.test(char) ) {
 			push_token();
@@ -55,10 +70,14 @@ const tokenize = (operators, exp) => {
 	return tokens;
 };
 
+const isOperand = tk => {
+	return tk.type === 'identifier' || tk.type === 'number';
+}
+
 const parseExpression = (operators, exp) => {
     const OPERATOR = operators;
     const isBinaryOperator = chr => Object.keys(OPERATOR).filter(op => OPERATOR[op].binary).includes(chr);
-    const isUnaryOperator = chr => Object.keys(OPERATOR).filter(op => !OPERATOR[op].binary).includes(chr);
+    const isUnaryOperator = chr => Object.keys(OPERATOR).filter(op => OPERATOR[op].unary).includes(chr);
 
 	const operator_stack = stackify();
 	const operand_stack = stackify();
@@ -78,12 +97,9 @@ const parseExpression = (operators, exp) => {
         }
 	};
     
-    let tokens = tokenize(OPERATOR, exp);
+	let tokens = tokenize(OPERATOR, exp);
 
 	let getToken = idx => (idx >= 0 && idx < tokens.length) ? tokens[idx] : null;
-	let assert = (bool, msg) => {
-		if( !bool ) throw new Error(msg);
-	};
 
 	// check if expression is valid
 	let parenValid = 0;
@@ -91,34 +107,40 @@ const parseExpression = (operators, exp) => {
 		let token = tokens[t];
 		if( token.type === 'operator' ) {
 			if( isBinaryOperator(token.value) ) {
-				let prevToken = getToken(t-1);
-				assert(prevToken !== null, "Binary operator must have a left-hand operand.");
-				assert(prevToken.type === 'identifier' || prevToken.value === ')', "Binary operator may not be directly preceded by an operator."); // either identifier or expression
-
 				let valid = false;
 				let tk = t+1;
 				while( getToken(tk) !== null && !valid ) {
 					if( isBinaryOperator(getToken(tk)) ) break;
-					else if( getToken(tk).type === 'identifier' || getToken(tk).value === '(' ) valid = true;
+					else if( isOperand(getToken(tk)) || getToken(tk).value === '(' ) valid = true;
 					tk++;
 				}
-				assert(valid, "Binary operators may not be adjacent to one another.");
+				assert(valid, "Binary operator must have a right-hand operand.");
+
+				let prevToken = getToken(t-1);
+				if( isUnaryOperator(token.value) ) {
+					// operator only has a right-hand operand, and can function as a unary operator.
+					// as such, it will be treated as a unary operator when a LH operand is not found.
+					token.unary = true;
+				} else {
+					assert(prevToken !== null, "Binary operator must have a left-hand operand.");
+					assert(isOperand(prevToken) || prevToken.value === ')', "Binary operator may not be directly preceded by an operator."); // either identifier or expression
+				}
 			} else {
 				let t2 = t+1;
 				let operates = false;
 				while( !operates && getToken(t2) !== null ) {
 					let cur = getToken(t2++);
-					operates = cur.type === 'identifier' || cur.value === '(';
+					operates = isOperand(cur) || cur.value === '(';
 				}
 				assert("Unary operator must operate on an identifier or expression.");
 			}
-		} else if( token.type === 'identifier' ) {
+		} else if( isOperand(token) ) {
 			let prevCheckToken = t-1;
 			let valid = true;
 			while( valid && getToken(prevCheckToken) !== null ) {
 				let tk = getToken(prevCheckToken--);
 				if( isBinaryOperator(tk.value) ) break;
-				else if( tk.type === 'identifier' || tk.value === ')' ) valid = false;
+				else if( isOperand(tk) || tk.value === ')' ) valid = false;
 			}
 			assert(valid, "Operands may not be placed adjacent to one another without an operator in between.");
 		} else {
@@ -162,11 +184,11 @@ const parseExpression = (operators, exp) => {
 			continue;
 		}
 		
-		if( token.type === 'identifier' ) {
+		if( isOperand(token) ) {
 			operand_stack.push(token.value);
 			aggregateUnaryOp();
-			if( !unique_tokens.includes(token.value) ) unique_tokens.push(token.value);
-		} else if( isBinaryOperator(token.value) ) {
+			if( token.type === 'identifier' && !unique_tokens.includes(token.value) ) unique_tokens.push(token.value);
+		} else if( isBinaryOperator(token.value) && !token.unary ) {
 			if( operator_stack.length > 0 && OPERATOR[token.value].precedence < OPERATOR[operator_stack.peek()].precedence ) {
 				const operands = [operand_stack.pop()];
 				const operators = [];
@@ -216,12 +238,28 @@ const parseExpression = (operators, exp) => {
 	return operand_stack[0]; // should be the expression tree (or a single-token string)
 };
 
+const recurseTree = (tree, fn) => {
+	fn(tree);
+	if( tree.children.length > 0 ) {
+		for( let child of tree.children ) {
+			recurseTree(child, fn);
+		}
+	}
+};
+
 class Parser {
     constructor(operators) {
         this._op = operators;
     }
     parse(exp) {
-        return parseExpression(this._op, exp);
+		let tree = parseExpression(this._op, exp);
+		// recurse tree and replace all number strings with actual numbers
+		recurseTree(tree, node => {
+			if( /^[0-9]+(\.[0-9]+)?$/.test(node.value) ) {
+				node.value = parseFloat(node.value);
+			}
+		});
+		return tree;
     }
 }
 
