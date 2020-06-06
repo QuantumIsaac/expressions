@@ -1,3 +1,5 @@
+import { recurseTree } from './tree';
+
 const stackify = arr => {
 	arr = arr || [];
 	arr.peek = () => arr[arr.length-1];
@@ -45,7 +47,7 @@ const tokenize = (operators, exp) => {
 	};
 
 	for( let char of exp ) {
-		if( /[a-zA-Z1-9_]/.test(char) ) {
+		if( /[a-zA-Z0-9_]/.test(char) ) {
 			cur_token += char;
 		} else if( char === '.' && /^[0-9]+$/.test(cur_token) ) {
 			cur_token += char;
@@ -96,7 +98,7 @@ const parseExpression = (operators, exp) => {
             unaryOp--;
         }
 	};
-    
+	
 	let tokens = tokenize(OPERATOR, exp);
 
 	let getToken = idx => (idx >= 0 && idx < tokens.length) ? tokens[idx] : null;
@@ -116,12 +118,12 @@ const parseExpression = (operators, exp) => {
 				}
 				assert(valid, "Binary operator must have a right-hand operand.");
 
-				let prevToken = getToken(t-1);
 				if( isUnaryOperator(token.value) ) {
 					// operator only has a right-hand operand, and can function as a unary operator.
 					// as such, it will be treated as a unary operator when a LH operand is not found.
 					token.unary = true;
 				} else {
+					let prevToken = getToken(t-1);
 					assert(prevToken !== null, "Binary operator must have a left-hand operand.");
 					assert(isOperand(prevToken) || prevToken.value === ')', "Binary operator may not be directly preceded by an operator."); // either identifier or expression
 				}
@@ -236,15 +238,6 @@ const parseExpression = (operators, exp) => {
 	retObj.tokens = unique_tokens;
 
 	return operand_stack[0]; // should be the expression tree (or a single-token string)
-};
-
-const recurseTree = (tree, fn) => {
-	fn(tree);
-	if( tree.children.length > 0 ) {
-		for( let child of tree.children ) {
-			recurseTree(child, fn);
-		}
-	}
 };
 
 class Parser {

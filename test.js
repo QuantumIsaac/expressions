@@ -1,7 +1,10 @@
-import ArithmeticExpression from './arithexp';
 import BooleanExpression from './boolexp';
+import ArithmeticExpression from './arithexp';
 import util from 'util';
 
-const exp = new ArithmeticExpression('1 + --3');
-console.log(util.inspect(exp.tree, false, 8));
-console.log(exp.evaluate());
+const exp = new ArithmeticExpression("(x*y^2)/x^2");
+console.log(util.inspect(exp, false, 8));
+console.log(exp.evaluate({
+    x: 2,
+    y: 2
+}));

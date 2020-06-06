@@ -46,7 +46,14 @@ class Expression {
                 throw new Error("Variables may not be longer than one character long!");
             }
         }
+
+        this._exp = exp;
     }
+
+    get expression() {
+        return this._exp;
+    }
+
     getTokens() {
         return this.tree.tokens;
     }

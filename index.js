@@ -1,7 +1,7 @@
-import Parser from './parser';
-import Evaluator from './evaluator';
+import BooleanExpression from './boolexp';
+import AlgebraicExpression from './arithexp';
 
-export { Parser, Evaluator };
+export { BooleanExpression, AlgebraicExpression };
 
 // TODO
 // - make a module that generates an "Expression" class for any given operator set (thus making boolexp.js and arithexp.js simply instances of this)
